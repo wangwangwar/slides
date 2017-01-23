@@ -49,10 +49,17 @@
 </section>
 <section id="指针的指针作为参数" class="slide level1">
 <h1>指针的指针作为参数</h1>
-<p>传入<code>NSError</code>的指针的指针作为方法参数作为一个返回值，然后方法本身有一个返回值，模拟多返回值的效果： <sub>~</sub> NSError <em>error = nil; NSData </em>data = [self getSynchronousData:&amp;error]; if (error != nil) { // An error occurred return } //Continue execeution <sub>~</sub></p>
+<p>传入<code>NSError</code>的指针的指针作为方法参数作为一个返回值，然后方法本身有一个返回值，模拟多返回值的效果：</p>
+<pre><code>NSError *error = nil;
+NSData *data = [self getSynchronousData:&amp;error];
+if (error != nil) {
+    // An error occurred
+    return
+}
+//Continue execeution</code></pre>
 </section>
-<section id="callback-1" class="slide level1">
-<h1>Callback</h1>
+<section id="用callback模拟多返回值" class="slide level1">
+<h1>用Callback模拟多返回值</h1>
 <pre><code>[self getSynchronousData:^ (id data, NSError *error) {
     if (error != nil) {
         // An error occurred
@@ -60,8 +67,8 @@
     }
 }];</code></pre>
 </section>
-<section id="swift可以用tuple来实现多返回值" class="slide level1">
-<h1><code>Swift</code>可以用tuple来实现多返回值：</h1>
+<section id="swift有tuple实现多返回值" class="slide level1">
+<h1><code>Swift</code>有<code>Tuple</code>实现多返回值：</h1>
 <pre><code>func getSynchronousData() -&gt; (data:NSData?, error:NSError?) {
     return (NSData(), NSError())
 }
@@ -70,12 +77,7 @@ if let error = response.error {
     //An error occurred
 }
 //Continue execeution</code></pre>
-</section>
-<section id="a" class="slide level1">
-<h1>A</h1>
-<ol start="4" type="1">
-<li>程序控制流一直向下，然后在Callee完成动作后，再调用回调 <code>Callback</code>, 这时候控制流转移到了 <code>Callback</code>。 执行完成后呢？控制流会回到原来的路线吗？</li>
-</ol>
+<p><del>程序控制流一直向下，然后在Callee完成动作后，再调用回调 <code>Callback</code>, 这时候控制流转移到了 <code>Callback</code>。 执行完成后呢？控制流会回到原来的路线吗？</del></p>
 </section>
 <section id="continuation" class="slide level1">
 <h1>Continuation</h1>
@@ -83,18 +85,112 @@ if let error = response.error {
 <p>在计算机科学和程序设计中，<code>延续</code>是一种对程序控制流程/状态的抽象表现形式。 延续性使程序状态信息具体化，也可以理解为，一个延续性以数据结构的形式表现了程序在运行过程中某一点的计算状态，相应的数据内容可以被编程语言访问，不被运行时环境所隐藏掉。</p>
 <p>延续性包含了当前程序的栈（包括当前周期内的所有数据，也就是本地变量），以及当前运行的位置。一个延续的实例可以在将来被用做控制流，被调用时它从所表达的状态开始恢复执行。</p>
 </section>
+<section id="continuation-in-haskell" class="slide level1">
+<h1>Continuation in Haskell</h1>
+<p>具体来讲，<code>continuation</code>是一个表示计算(computation)的剩余部分的函数（procedure)。 举例：</p>
+<p>对表达式 <code>3 * (f() + 8)</code>, 在对表达式 <code>f()</code> 求值后，计算的剩余部分就是对求值结果加 <code>8</code>，然后对和乘 <code>3</code>。 比如用函数 <code>current_continuation</code> 来表示 <code>f()</code> 的延续：</p>
+<pre><code>void current_continuation(int result) {
+    result += 8;
+    result *= 3;
+    (continuation of 3 * (f() + 8))(result);
+}</code></pre>
+<p>这里把调用的返回值传给了延续。</p>
+<p>有一些语言（如 Scheme, SML/NJ, Haskell, Scala) 把延续看作一等公民(first-class citizen)。 比如在 Scheme 中，函数 <code>call-with-current-continuation</code> (<code>call/cc</code>) 以一个函数为参数，这个函数以当前计算的延续作为参数。</p>
+<pre><code>(call/cc (lambda (current-continuation)
+  body))</code></pre>
+<p>在对表达式 <code>body</code> 求值过程中， 当前延续绑定到变量 <code>current-continuation</code> 上。 如果调用 <code>current-continuation</code>, 会立即从 <code>call/cc</code> 的调用过程中返回， <code>call/cc</code> 会返回调用 <code>current-continuation</code> 的参数。如：</p>
+<pre><code>(display
+  (call/cc (lambda (cc)
+            (display &quot;I got here.\n&quot;)
+            (cc &quot;This string was passed to the continuation.\n&quot;)
+            (display &quot;But not here.\n&quot;))))
+; 会打印
+; I got here.
+; This string was passed to the continuation.</code></pre>
+<p>延续强大之处在于，即使 <code>call/cc</code> 已经完成了， 延续仍可以被调用。如：</p>
+<pre><code>(let ((start #f))
+
+  (if (not start)
+      (call/cc (lambda (cc)
+                 (set! start cc))))
+
+  (display &quot;Going to invoke (start)\n&quot;)
+
+  (start))</code></pre>
+<p>会不断打印 &quot;Going to invoke (start)&quot;。</p>
+</section>
+<section id="example" class="slide level1">
+<h1>Example</h1>
+<pre><code>main = do
+    putStrLn &quot;alpha&quot;
+    putStrLn &quot;beta&quot;
+    putStrLn &quot;gamma&quot;</code></pre>
+</section>
+<section id="其实是用了continuation的" class="slide level1">
+<h1>其实是用了<code>continuation</code>的</h1>
+<p>去掉 <code>do</code> 语法糖之后</p>
+<pre><code>main = putStrLn &quot;alpha&quot;
+       &gt;&gt;= \_ -&gt;
+           putStrLn &quot;beta&quot;
+           &gt;&gt;= \_ -&gt;
+               putStrLn &quot;gamma&quot;</code></pre>
+<p>每一个表达式，如 <code>putStrLn &quot;alpha&quot;</code> 都被绑定到一个 <code>延续函数</code>(<code>continuation function</code>), 这个函数将显式(explicit)地顺序执行 <code>main</code>　。 因此任何语言如果允许顺序执行语句，其实都隐式(implicit)地使用了延续。</p>
+</section>
 <section id="monad" class="slide level1">
 <h1>Monad</h1>
 <p>在函数式语言中，对于纯函数，由于其无副作用性，使得编译器可以优化程序的求值顺序，比如：</p>
 <p><code>pure1(3) + pure2(10)</code></p>
+<p><code>2*x + 3*y + 1/x + 2/y</code></p>
 <p>有可能是<code>pure1(3)</code>先求值再对<code>pure2(10)</code>求值，可有可能反过来，也有可能在多核计算机中并行(Parallel)计算。</p>
-<p>如果一定要让<code>pure1(3)</code>在<code>pure2(10)</code>之前求值呢？ 在Haskell中，<code>Monad</code> 就可以显式控制求值顺序，比如 <sub>~</sub> class Applicative =&gt; Monad f where &gt;&gt;= :: f a -&gt; (a -&gt; f b) -&gt; f b <sub>~</sub></p>
+<p>如果一定要让<code>pure1(3)</code>在<code>pure2(10)</code>之前求值呢？</p>
+<pre><code>let val r2x = 2 * x in
+ let val r3y = 3 * y in
+   let val sum1=r2x + r3y in
+     let val r1x = 1 / x in
+       let val sum2 = sum1 + r1x in
+         let val r2y = 2 / y in
+           sum2 + r2y
+         end
+        …….end</code></pre>
+<p>在Haskell中，<code>Monad</code> 就可以显式控制求值顺序，比如</p>
+<pre><code>class Applicative =&gt; Monad f where
+  &gt;&gt;= :: f a -&gt; (a -&gt; f b) -&gt; f b</code></pre>
 <p>这是为什么 IO 要用 <code>Monad</code> 来实现的原因之一。</p>
 <p>Haskell 还有一个东西叫 <code>Continuation Monad</code>。这是干什么呢？</p>
 </section>
+<section id="延续用来解决一些问题" class="slide level1">
+<h1>延续用来解决一些问题</h1>
+<p>Exceptions, time-traveling search, generators, threads, and coroutines</p>
+</section>
+<section id="sat-solving10" class="slide level1">
+<h1>[SAT-solving][10]</h1>
+<p>SAT 是布尔可满足性问题 (Boolean satisfiability problem, SATISFIABILITY) 的简称，用来解决给定的布尔方程式，是否存在一组变量赋值，使问题为可满足。比如：对于一个确定的逻辑电路，是否存在一种输入使得输出为真。</p>
+<pre><code>(let ((a (amb (list 1 2 3 4 5 6 7)))
+      (b (amb (list 1 2 3 4 5 6 7)))
+      (c (amb (list 1 2 3 4 5 6 7))))
+
+      ; We&#39;re looking for dimensions of a legal right
+      ; triangle using the Pythagorean theorem:
+      (assert (= (* c c) (+ (* a a) (* b b))))
+
+      ; And, we want the second side to be the shorter one:
+      (assert (&lt; b a))
+
+      ; Print out the answer:
+      (display (list a b c))
+      (newline))
+
+; print out (4 3 5)</code></pre>
+</section>
+<section id="用延续来实现协程coroutine" class="slide level1">
+<h1>用延续来实现<code>协程</code>(<code>coroutine</code>)</h1>
+</section>
+<section id="用延续来实现异常exception" class="slide level1">
+<h1>用延续来实现<code>异常</code>(<code>exception</code>)</h1>
+</section>
 <section class="slide level1">
 
-<p>https://en.wikipedia.org/wiki/Continuation https://en.wikipedia.org/wiki/Continuation-passing_style https://en.wikipedia.org/wiki/Callback_(computer_programming)</p>
+<p>https://en.wikipedia.org/wiki/Continuation https://en.wikipedia.org/wiki/Continuation-passing_style https://en.wikipedia.org/wiki/Callback_(computer_programming) http://www.cs.uccs.edu/~qyi/UTSA-classes/cs3723/slides/Control.pdf http://matt.might.net/articles/programming-with-continuations--exceptions-backtracking-search-threads-generators-coroutines/ [10]: https://zh.wikipedia.org/wiki/%E5%B8%83%E5%B0%94%E5%8F%AF%E6%BB%A1%E8%B6%B3%E6%80%A7%E9%97%AE%E9%A2%98</p>
 </section>
     </div>
   </div>
