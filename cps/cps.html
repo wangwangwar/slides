@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <title></title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+  <link rel="stylesheet" href="reveal.js/css/reveal.css">
+  <style type="text/css">code{white-space: pre;}</style>
+  <link rel="stylesheet" href="reveal.js/css/theme/black.css" id="theme">
+  <!-- Printing and PDF exports -->
+  <script>
+    var link = document.createElement( 'link' );
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.href = window.location.search.match( /print-pdf/gi ) ? 'reveal.js/css/print/pdf.css' : 'reveal.js/css/print/paper.css';
+    document.getElementsByTagName( 'head' )[0].appendChild( link );
+  </script>
+  <!--[if lt IE 9]>
+  <script src="reveal.js/lib/js/html5shiv.js"></script>
+  <![endif]-->
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+
+<section id="topics" class="slide level1">
+<h1>Topics</h1>
+<p>Callback -&gt; Continuation -&gt; Call With Continuation -&gt; CPS</p>
+</section>
+<section id="callback" class="slide level1">
+<h1>Callback</h1>
+<p><code>Callback</code>(回调) 的概念是，把一段可执行代码，作为参数传给其它代码，然后会在某个时候<strong>回来调用</strong>这段代码。如果是回调是立即发生的，叫做<strong>同步回调(<code>Synchronous Callback</code>)</strong>，如果是在未来某个时间回调，叫做<strong>异步回调(<code>Asynchronous Callback</code>)</strong>。</p>
+</section>
+<section id="异步回调" class="slide level1">
+<h1>异步回调</h1>
+<p>异步回调很常见也是使用最多的，比如网络请求，文件处理等较耗时的情景异步回调很有用。 https://medium.com/swift-programming/continuation-passing-style-in-swift-e4d825962803#.9vqt39jw9</p>
+</section>
+<section id="同步回调" class="slide level1">
+<h1>同步回调</h1>
+<p>同步回调呢？好像不常见，有什么用呢？</p>
+</section>
+<section id="objective-c中模拟多返回值" class="slide level1">
+<h1><code>Objective-C</code>中模拟多返回值</h1>
+<p>在<code>Objective-C</code>中，由于缺少<code>Tuple</code>这种数据结构，方法无法返回多个值，但是可以用其它方式模拟：</p>
+</section>
+<section id="指针的指针作为参数" class="slide level1">
+<h1>指针的指针作为参数</h1>
+<p>传入<code>NSError</code>的指针的指针作为方法参数作为一个返回值，然后方法本身有一个返回值，模拟多返回值的效果： <sub>~</sub> NSError <em>error = nil; NSData </em>data = [self getSynchronousData:&amp;error]; if (error != nil) { // An error occurred return } //Continue execeution <sub>~</sub></p>
+</section>
+<section id="callback-1" class="slide level1">
+<h1>Callback</h1>
+<pre><code>[self getSynchronousData:^ (id data, NSError *error) {
+    if (error != nil) {
+        // An error occurred
+        // 错误之后，控制流怎么由Callback转出去？
+    }
+}];</code></pre>
+</section>
+<section id="swift可以用tuple来实现多返回值" class="slide level1">
+<h1><code>Swift</code>可以用tuple来实现多返回值：</h1>
+<pre><code>func getSynchronousData() -&gt; (data:NSData?, error:NSError?) {
+    return (NSData(), NSError())
+}
+let response = getSynchronousData()
+if let error = response.error {
+    //An error occurred
+}
+//Continue execeution</code></pre>
+</section>
+<section id="a" class="slide level1">
+<h1>A</h1>
+<ol start="4" type="1">
+<li>程序控制流一直向下，然后在Callee完成动作后，再调用回调 <code>Callback</code>, 这时候控制流转移到了 <code>Callback</code>。 执行完成后呢？控制流会回到原来的路线吗？</li>
+</ol>
+</section>
+<section id="continuation" class="slide level1">
+<h1>Continuation</h1>
+<p>更普遍来看，回调其实就是<code>延续</code>(<code>Continuation</code>)的一种对象化的实现（作为方法的参数）。</p>
+<p>在计算机科学和程序设计中，<code>延续</code>是一种对程序控制流程/状态的抽象表现形式。 延续性使程序状态信息具体化，也可以理解为，一个延续性以数据结构的形式表现了程序在运行过程中某一点的计算状态，相应的数据内容可以被编程语言访问，不被运行时环境所隐藏掉。</p>
+<p>延续性包含了当前程序的栈（包括当前周期内的所有数据，也就是本地变量），以及当前运行的位置。一个延续的实例可以在将来被用做控制流，被调用时它从所表达的状态开始恢复执行。</p>
+</section>
+<section id="monad" class="slide level1">
+<h1>Monad</h1>
+<p>在函数式语言中，对于纯函数，由于其无副作用性，使得编译器可以优化程序的求值顺序，比如：</p>
+<p><code>pure1(3) + pure2(10)</code></p>
+<p>有可能是<code>pure1(3)</code>先求值再对<code>pure2(10)</code>求值，可有可能反过来，也有可能在多核计算机中并行(Parallel)计算。</p>
+<p>如果一定要让<code>pure1(3)</code>在<code>pure2(10)</code>之前求值呢？ 在Haskell中，<code>Monad</code> 就可以显式控制求值顺序，比如 <sub>~</sub> class Applicative =&gt; Monad f where &gt;&gt;= :: f a -&gt; (a -&gt; f b) -&gt; f b <sub>~</sub></p>
+<p>这是为什么 IO 要用 <code>Monad</code> 来实现的原因之一。</p>
+<p>Haskell 还有一个东西叫 <code>Continuation Monad</code>。这是干什么呢？</p>
+</section>
+<section class="slide level1">
+
+<p>https://en.wikipedia.org/wiki/Continuation https://en.wikipedia.org/wiki/Continuation-passing_style https://en.wikipedia.org/wiki/Callback_(computer_programming)</p>
+</section>
+    </div>
+  </div>
+
+  <script src="reveal.js/lib/js/head.min.js"></script>
+  <script src="reveal.js/js/reveal.js"></script>
+
+  <script>
+
+      // Full list of configuration options available at:
+      // https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+
+        // Optional reveal.js plugins
+        dependencies: [
+          { src: 'reveal.js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+          { src: 'reveal.js/plugin/zoom-js/zoom.js', async: true },
+          { src: 'reveal.js/plugin/notes/notes.js', async: true }
+        ]
+      });
+    </script>
+    </body>
+</html>
