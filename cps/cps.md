@@ -69,7 +69,9 @@ if let error = response.error {
 
 延续性包含了当前程序的栈（包括当前周期内的所有数据，也就是本地变量），以及当前运行的位置。一个延续的实例可以在将来被用做控制流，被调用时它从所表达的状态开始恢复执行。
 
-# Continuation in Haskell
+# Continuation-Passing Style (CPS)
+
+# Continuation as First-Class Citizen
 
 具体来讲，`continuation`是一个表示计算(computation)的剩余部分的函数（procedure)。
 举例：
@@ -123,8 +125,6 @@ void current_continuation(int result) {
 
 会不断打印 "Going to invoke (start)"。
 
-
-
 # Example
 
 ~~~
@@ -148,7 +148,6 @@ main = putStrLn "alpha"
 
 每一个表达式，如 `putStrLn "alpha"` 都被绑定到一个 `延续函数`(`continuation function`), 这个函数将显式(explicit)地顺序执行 `main`　。
 因此任何语言如果允许顺序执行语句，其实都隐式(implicit)地使用了延续。
-
 
 # Monad
 
